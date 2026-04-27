@@ -34,7 +34,9 @@
 namespace ck {
 namespace detail {
 
-static inline __device__ bool isnan(half_t x) { return __hisnan(x); };
+// Cast to __half to disambiguate __hisnan (also overloaded for __hip_bfloat16
+// in newer HIP headers, which makes the call ambiguous when half_t == _Float16).
+static inline __device__ bool isnan(half_t x) { return __hisnan(static_cast<__half>(x)); };
 
 template <NanPropagation_t nanPropaOpt, typename opReduce, typename compType>
 struct binop_with_nan_check;
