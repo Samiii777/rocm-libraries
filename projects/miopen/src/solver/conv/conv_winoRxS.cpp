@@ -796,6 +796,14 @@ bool ConvBinWinoRxS<Winodata, Winofilter>::IsApplicable(const ExecutionContext& 
     {
         if(env::disabled(MIOPEN_DEBUG_AMD_WINOGRAD_RXS_F3X2))
             return false;
+        // The miopenSp3AsmConv_v30_3_1_gfx11_fp32_f3x2_stride{1,2} Sp3 assembly
+        // kernels are hand-tuned for gfx1100/gfx1101 (RDNA 3 dGPUs) and hard-hang
+        // the compute units on gfx1150/gfx1151 (RDNA 3.5 APUs) with no VM fault
+        // during MIOpen's GenericSearch / EvaluateInvokers benchmark sweep.
+        // Fall back to the safe ConvBinWinogradRxSf2x3g1 (F2X3) Winograd path on
+        // gfx115x until a native RDNA 3.5 Sp3 variant exists.
+        if(StartsWith(ctx.GetStream().GetDeviceName(), "gfx115"))
+            return false;
     }
     return IsApplicableBase<Winodata, Winofilter>(ctx, problem);
 }
