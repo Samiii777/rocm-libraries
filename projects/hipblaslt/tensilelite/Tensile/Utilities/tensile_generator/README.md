@@ -77,4 +77,27 @@ To use the `tensile_config_generator.py` script, follow these steps:
    inv build --install-deps --clients --install-pkg --architecture $(/opt/rocm/llvm/bin/offload-arch) --cpu-ref-lib=lapack
    ```
 
+### Tuning template & parameter validity
+
+`tensile_config_generator.py` copies the solution parameters from
+`tuning_template.yaml` straight into the generated config. When you then run
+`Tensile <generated yaml>`, Tensile validates every solution parameter with
+`checkParametersAreValid` (`Tensile/Common/ValidParameters.py`). If the
+template references a parameter that is not in `validParameters`, tuning aborts
+with an error such as:
+
+```
+Invalid parameter name: GlobalSplitUCoalesced
+```
+
+`tuning_template.yaml` therefore IS the template that is used for tuning, and it
+must stay in sync with the in-tree `validParameters` / `globalParameters`
+registries. To prevent the template from silently drifting (see
+rocm-libraries#8789), the regression test
+`Tensile/Tests/unit/test_TuningTemplateValidation.py` validates every solution
+and global parameter in `tuning_template.yaml` against those registries on every
+CI run. If you add/rename/remove a solution parameter in
+`Tensile/Common/ValidParameters.py`, update `tuning_template.yaml` (and that
+test if a new top-level global key is introduced) so the two remain consistent.
+
 For more detailed information on the script's functionality and advanced usage, please refer to the comments within the `tensile_config_generator.py` file.
