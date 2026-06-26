@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <filesystem>
 #include <iostream>
+#include <stdexcept>
+#include <string_view>
 #include <vector>
 
 #include <gtest/gtest.h>
@@ -25,6 +27,18 @@ namespace hipdnn_test_sdk::utilities
 inline bool isMetaJsonFile(const std::filesystem::path& filepath)
 {
     return filepath.extension() == ".json" && filepath.stem().extension() == ".meta";
+}
+
+/// Detect whether a runtime_error originates from a missing/unreadable tensor
+/// data file (the loadGraphAndTensors error path). This happens when bundle
+/// JSON files are present but their companion .tensor*.bin files have not been
+/// pulled (e.g. DVC data unavailable). The golden reference harnesses use this
+/// to GTEST_SKIP() gracefully and warn, instead of failing the test.
+inline bool isTensorLoadFailure(const std::runtime_error& error)
+{
+    constexpr std::string_view PREFIX = "Error: could not load tensor ";
+    const std::string_view      message(error.what());
+    return message.size() >= PREFIX.size() && message.substr(0, PREFIX.size()) == PREFIX;
 }
 
 class ScopedDirectory

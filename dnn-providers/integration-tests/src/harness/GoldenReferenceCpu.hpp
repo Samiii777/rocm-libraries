@@ -7,7 +7,6 @@
 
 #include <gtest/gtest.h>
 #include <stdexcept>
-#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -18,18 +17,6 @@
 #include <hipdnn_test_sdk/utilities/LoadGraphAndTensors.hpp>
 #include <hipdnn_test_sdk/utilities/TestUtilities.hpp>
 #include <hipdnn_test_sdk/utilities/cpu_graph_executor/CpuReferenceGraphExecutor.hpp>
-
-namespace
-{
-
-inline bool isTensorLoadFailure(const std::runtime_error& error)
-{
-    constexpr std::string_view PREFIX = "Error: could not load tensor ";
-    const std::string_view message(error.what());
-    return message.size() >= PREFIX.size() && message.substr(0, PREFIX.size()) == PREFIX;
-}
-
-} // namespace
 
 namespace hipdnn_integration_tests
 {
@@ -65,7 +52,7 @@ protected:
         }
         catch(const std::runtime_error& e)
         {
-            if(!isTensorLoadFailure(e))
+            if(!hipdnn_test_sdk::utilities::isTensorLoadFailure(e))
             {
                 throw;
             }

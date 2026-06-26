@@ -69,14 +69,29 @@ protected:
 
         _engineConfigBuffer = hipdnn_test_sdk::utilities::createValidEngineConfig(1).Release();
 
-        _graphAndTensors = hipdnn_test_sdk::utilities::loadGraphAndTensors(path);
+        try
+        {
+            _graphAndTensors = hipdnn_test_sdk::utilities::loadGraphAndTensors(path);
+        }
+        catch(const std::runtime_error& error)
+        {
+            // The bundle JSON is present but its tensor data (e.g. DVC-tracked
+            // .tensor*.bin files) could not be loaded. Skip and warn instead of
+            // failing so the suite passes when reference data is unavailable.
+            if(hipdnn_test_sdk::utilities::isTensorLoadFailure(error))
+            {
+                HIPDNN_PLUGIN_LOG_WARN(
+                    "Skipping Gpu golden reference test: reference tensor data "
+                    "unavailable (" << error.what() << ")");
+                GTEST_SKIP() << "Reference tensor data unavailable: " << error.what();
+            }
+            throw;
+        }
         _referenceOutputTensors = _graphAndTensors.extractAndClearOutputTensorData();
     }
 
     void goldenReferenceTestSuite(float absoluteTolerance, float relativeTolerance)
     {
-        SKIP_IF_WINDOWS();
-
         hipdnnPluginConstData_t opGraph
             = {_graphAndTensors.graphBuffer.data(), _graphAndTensors.graphBuffer.size()};
 
