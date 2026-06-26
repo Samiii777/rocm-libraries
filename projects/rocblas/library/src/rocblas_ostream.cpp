@@ -278,7 +278,13 @@ void rocblas_internal_ostream::worker::send(std::string str)
         // Added a timed wait to exit after one second, if we do not get the promise from worker thread.
         future.wait_for(std::chrono::seconds(1));
     else
-        future.get();
+        // On Windows, at process exit the C runtime terminates the detached worker
+        // thread BEFORE C++ static destructors / atexit handlers run. The ROCBLAS_LAYER
+        // profile-logging layer buffers its output and only flushes it when the handle
+        // is destroyed during teardown, by which point the worker thread may already be
+        // gone; an unbounded future.get() would then block forever and hang the process
+        // on exit. Use a bounded wait (generous so large writes still complete).
+        future.wait_for(std::chrono::seconds(30));
 #else
     future.get();
 #endif
