@@ -3,6 +3,10 @@
 
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+#include <mutex>
+
 #include <hipdnn_data_sdk/logging/Logger.hpp>
 #include <hipdnn_data_sdk/types.hpp>
 #include <hipdnn_data_sdk/utilities/TensorView.hpp>
@@ -49,6 +53,46 @@ public:
 
         std::atomic<bool> result(true);
 
+        // Diagnostics: track the single worst (largest absolute-difference) failing element, the
+        // maximum relative difference, and the total number of failing elements. This converts an
+        // otherwise opaque "Mismatch found" assertion into an actionable report (max abs diff, max
+        // rel diff, worst index, expected vs actual, failing count), which is essential for
+        // triaging flaky/marginal numerical mismatches.
+        // See https://github.com/ROCm/rocm-libraries/issues/8638.
+        // The worst-element bookkeeping is serialized behind a mutex but is only entered when an
+        // element has already failed the tolerance check, so it does not affect the fast path.
+        std::mutex worstMutex;
+        std::atomic<int64_t> failingCount(0);
+        bool haveWorst = false;
+        float worstAbsDiff = 0.0f;
+        float worstRefValue = 0.0f;
+        float worstImplValue = 0.0f;
+        float worstThreshold = 0.0f;
+        std::vector<int64_t> worstIndices;
+        // Track the maximum relative difference independently of the maximum absolute difference,
+        // since the worst element by either metric may differ.
+        float maxRelDiff = 0.0f;
+
+        auto recordWorst = [&](const std::vector<int64_t>& indices,
+                               float refValueF,
+                               float implValueF,
+                               float absDiff,
+                               float threshold) {
+            const std::lock_guard<std::mutex> lock(worstMutex);
+            const float denom = std::fabs(refValueF);
+            const float relDiff = denom > 0.0f ? absDiff / denom : absDiff;
+            maxRelDiff = std::max(maxRelDiff, relDiff);
+            if(!haveWorst || absDiff > worstAbsDiff)
+            {
+                haveWorst = true;
+                worstAbsDiff = absDiff;
+                worstRefValue = refValueF;
+                worstImplValue = implValueF;
+                worstThreshold = threshold;
+                worstIndices = indices;
+            }
+        };
+
         auto validateFunc = [&](const std::vector<int64_t>& indices) {
             using hipdnn_data_sdk::types::fabs;
             using hipdnn_data_sdk::types::isnan;
@@ -63,6 +107,7 @@ public:
                     << StreamVec(indices) << ": reference value = " << refValue
                     << ", implementation value = " << implValue
                     << ". This may indicate an output element was not written by the operation.");
+                failingCount.fetch_add(1, std::memory_order_relaxed);
                 result.store(false, std::memory_order_relaxed);
                 return result.load(std::memory_order_relaxed);
             }
@@ -81,6 +126,12 @@ public:
                     << ", absolute difference = " << absDiff << ", threshold = " << threshold
                     << ", difference - threshold = " << (absDiff - threshold)
                     << ", (atol=" << _absoluteTolerance << ", rtol=" << _relativeTolerance << ")");
+                failingCount.fetch_add(1, std::memory_order_relaxed);
+                recordWorst(indices,
+                            static_cast<float>(refValue),
+                            static_cast<float>(implValue),
+                            static_cast<float>(absDiff),
+                            static_cast<float>(threshold));
                 result.store(false, std::memory_order_relaxed);
             }
             return result.load(std::memory_order_relaxed);
@@ -90,6 +141,27 @@ public:
         auto parallelFunc
             = hipdnn_test_sdk::detail::makeParallelTensorFunctor(validateFunc, reference.dims());
         parallelFunc(std::thread::hardware_concurrency());
+
+        // Emit a single, concise diagnostics summary on failure so flaky/marginal mismatches are
+        // immediately actionable from the test log without re-running with extra instrumentation.
+        if(haveWorst)
+        {
+            const float worstRelDiff = std::fabs(worstRefValue) > 0.0f
+                                           ? worstAbsDiff / std::fabs(worstRefValue)
+                                           : worstAbsDiff;
+            HIPDNN_SDK_LOG_ERROR(
+                "allClose summary: "
+                << failingCount.load(std::memory_order_relaxed) << " of " << reference.elementCount()
+                << " elements failed. Worst element at indices " << StreamVec(worstIndices)
+                << ": expected (reference) = " << worstRefValue
+                << ", actual (implementation) = " << worstImplValue
+                << ", max absolute difference = " << worstAbsDiff
+                << " (threshold = " << worstThreshold << ", exceeded by "
+                << (worstAbsDiff - worstThreshold)
+                << "), relative difference at worst element = " << worstRelDiff
+                << ", max relative difference (any element) = " << maxRelDiff
+                << ", (atol=" << _absoluteTolerance << ", rtol=" << _relativeTolerance << ")");
+        }
 
         return result.load();
     }
