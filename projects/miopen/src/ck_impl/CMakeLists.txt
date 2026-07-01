@@ -25,11 +25,13 @@ endfunction()
 
 # GPU base archs for which MIOpen has CK grouped conv kernels.
 # Note: this is narrower than CK's own supported arch list — e.g. gfx103x and
-# gfx11x are CK-capable but MIOpen does not yet provide CK grouped conv kernels
-# for them. Add arches here when MIOpen adds grouped conv support for them.
+# gfx11x are CK-capable. gfx1103 (RDNA3 Phoenix, e.g. Radeon 780M) shares the
+# WMMA ISA family with gfx1100/gfx1101/gfx1102 and is included here (TheRock #6252);
+# the remaining gfx103x still lack MIOpen CK grouped conv kernels. Add arches here
+# when MIOpen adds grouped conv support for them.
 set(_CK_SUPPORTED_ARCHS
     gfx908 gfx90a gfx942 gfx950
-    gfx1100 gfx1101 gfx1102
+    gfx1100 gfx1101 gfx1102 gfx1103
     gfx1150 gfx1151 gfx1152 gfx1153
     gfx1200 gfx1201
 )
