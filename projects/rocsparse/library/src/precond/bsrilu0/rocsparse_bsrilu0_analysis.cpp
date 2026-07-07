@@ -63,6 +63,19 @@ rocsparse_status rocsparse::bsrilu0_analysis(rocsparse_handle          handle,
     }
 
     auto bsrilu0_info = p_bsrilu0_info[0];
+    // Issue #9143: The singularity buffer used by the bsrilu0 solve is allocated
+    // via hipMallocAsync. If that allocation happens during the solve while the
+    // stream is being captured into a HIP graph, it becomes a stream-ordered
+    // allocation node, which makes the resulting graph fail to (re)launch with
+    // hipErrorOutOfMemory (observed on Windows/gfx110X). Allocate it here, during
+    // analysis (which is never graph-captured), so the solve finds it already
+    // allocated and captures no allocation node.
+    if(bsrilu0_info == nullptr)
+    {
+        bsrilu0_info      = new _rocsparse_bsrilu0_info();
+        p_bsrilu0_info[0] = bsrilu0_info;
+    }
+    bsrilu0_info->create_singularity_numeric_exact(A->batch_count, A->col_type, handle->stream);
     switch(analysis)
     {
     case rocsparse_analysis_policy_reuse:
