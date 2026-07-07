@@ -12,6 +12,13 @@ on:
       - "test/therock/test_hipblaslt.py"
       - "test/therock/lsan.supp"
       - ".github/workflows/hipblaslt-asan-ci.yml"
+      # Docs-only negations: mirror the repo's `ci:docs-only` definition
+      # (.github/labeler.yml -> {**/*.md,**/*.rst,**/docs/**/*,**/.readthedocs.yaml})
+      # so documentation-only PRs do not trigger the full gfx90a ASAN build.
+      - "!**/*.md"
+      - "!**/*.rst"
+      - "!**/docs/**/*"
+      - "!**/.readthedocs.yaml"
   workflow_dispatch:
 
 permissions:

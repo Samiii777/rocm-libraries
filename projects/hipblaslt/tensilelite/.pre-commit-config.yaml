@@ -1,0 +1,24 @@
+# Pre-commit configuration for the hipBLASLt tensilelite Python tree.
+#
+# The quality + AI-friendliness report is a `manual`-stage hook: it does NOT run
+# on every commit (it is report-only and can be slow on the full Tensile/ tree).
+# Run it on demand with:
+#
+#     pre-commit run --hook-stage manual tensilelite-quality
+#
+# This mirrors the CI job (hipblaslt-tensilelite-quality.yml) so developers can
+# see the same table locally before pushing.
+
+repos:
+  - repo: local
+    hooks:
+      - id: tensilelite-quality
+        name: tensilelite quality + AI-friendliness report (report-only)
+        entry: python projects/hipblaslt/tensilelite/scripts/quality/check_quality.py
+        language: python
+        additional_dependencies:
+          - lizard
+        # Manual stage only: never runs on commit/push automatically.
+        stages: [manual]
+        pass_filenames: false
+        always_run: true

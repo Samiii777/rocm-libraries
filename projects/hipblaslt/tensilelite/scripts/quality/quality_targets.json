@@ -1,0 +1,20 @@
+{
+  "bare_except_clauses": 12,
+  "broad_except_clauses": 44,
+  "ccn_violators": 265,
+  "cross_feature_imports": 50,
+  "deeply_nested_functions": 226,
+  "duplicated_literals": 1718,
+  "global_statements": 8,
+  "large_files": 77,
+  "many_exit_functions": 49,
+  "missing_seam_tests": 90,
+  "mutable_default_args": 7,
+  "nloc_violators": 45,
+  "star_imports": 13,
+  "swallowed_errors": 46,
+  "type_ignore_comments": 4,
+  "typing_any_uses": 18,
+  "very_large_files": 29,
+  "wide_signatures": 289
+}
