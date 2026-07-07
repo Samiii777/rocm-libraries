@@ -43,17 +43,27 @@ namespace ck_tile::core::arch::mma {
 // one packed register for each input to be able to process smaller K values by padding.
 
 /**
- * @struct amdgcn_mma
- * @brief Specialization of amdgcn_mma for fp16_t, fp16_t, fp32_t MMA operation on GFX11
- * architecture.
- * @tparam CompilerTarget Current compiler target
+ * @defgroup dense_wmma_gfx11 Dense WMMA for GFX11
+ * @brief Dense specializations of @ref amdgcn_mma for GFX11 family.
+ *
+ * Template parameters A/B/C denote input/output types,
+ * M/N/K are the fragment (MmaTile) sizes,
+ * and `enable_if_target_*` restricts the specialization to specific GPU targets.
+ *
+ * @tparam CompilerTarget Current compiler target.
+ *
+ * @sa amdgcn_mma_base for base template parameter documentation.
+ * @{
  */
+
 // TODO: c++20 template <amdgcn_target CompilerTarget>
 // TODO: c++20 requires
+
 template <typename CompilerTarget>
 // clang-format off
-//               | A B C DataTypes      | MNK + WaveSize    |AParams  |BPar |CPar |
+//                |A B C DataTypes       |MNK           |
 struct amdgcn_mma<fp16_t, fp16_t, fp32_t, 16u, 16u, 16u, CompilerTarget, MmaOpFamily::DENSE, enable_if_target_family_gfx11_t<CompilerTarget>>
+//                                                      |WS  |AParams |BPar |CPar |
 : amdgcn_mma_base<fp16_t, fp16_t, fp32_t, 16u, 16u, 16u, 32u, 16, 1, 2, 1, 2, 8, 8, WmmaOp, MmaOpFamily::DENSE>
 // clang-format on
 {
@@ -67,18 +77,11 @@ struct amdgcn_mma<fp16_t, fp16_t, fp32_t, 16u, 16u, 16u, CompilerTarget, MmaOpFa
     }
 };
 
-/**
- * @struct amdgcn_mma
- * @brief Specialization of amdgcn_mma for bf16_t, bf16_t, fp32_t MMA operation on GFX11
- * architecture.
- * @tparam CompilerTarget Current compiler target
- */
-// TODO: c++20 template <amdgcn_target CompilerTarget>
-// TODO: c++20 requires
 template <typename CompilerTarget>
 // clang-format off
-//               | A B C DataTypes      | MNK + WaveSize    |AParams  |BPar |CPar |
+//                |A B C DataTypes       |MNK           |
 struct amdgcn_mma<bf16_t, bf16_t, fp32_t, 16u, 16u, 16u, CompilerTarget, MmaOpFamily::DENSE, enable_if_target_family_gfx11_t<CompilerTarget>>
+//                                                      |WS  |AParams |BPar |CPar |
 : amdgcn_mma_base<bf16_t, bf16_t, fp32_t, 16u, 16u, 16u, 32u, 16, 1, 2, 1, 2, 8, 8, WmmaOp, MmaOpFamily::DENSE>
 // clang-format on
 {
@@ -92,18 +95,11 @@ struct amdgcn_mma<bf16_t, bf16_t, fp32_t, 16u, 16u, 16u, CompilerTarget, MmaOpFa
     }
 };
 
-/**
- * @struct amdgcn_mma
- * @brief Specialization of amdgcn_mma for int8_t, int8_t, int32_t MMA operation on GFX11
- * architecture.
- * @tparam CompilerTarget Current compiler target
- */
-// TODO: c++20 template <amdgcn_target CompilerTarget>
-// TODO: c++20 requires
 template <typename CompilerTarget>
 // clang-format off
-//               | A B C DataTypes       | MNK + WaveSize    |AParams  |BPar |CPar |
+//                |A B C DataTypes        |MNK           |
 struct amdgcn_mma<int8_t, int8_t, int32_t, 16u, 16u, 16u, CompilerTarget, MmaOpFamily::DENSE, enable_if_target_family_gfx11_t<CompilerTarget>>
+//                                                       |WS  |AParams |BPar |CPar |
 : amdgcn_mma_base<int8_t, int8_t, int32_t, 16u, 16u, 16u, 32u, 16, 1, 2, 1, 2, 8, 8, WmmaOp, MmaOpFamily::DENSE>
 // clang-format on
 {
@@ -123,18 +119,11 @@ struct amdgcn_mma<int8_t, int8_t, int32_t, 16u, 16u, 16u, CompilerTarget, MmaOpF
     }
 };
 
-/**
- * @struct amdgcn_mma
- * @brief Specialization of amdgcn_mma for pk_int4_t, pk_int4_t, int32_t MMA operation on GFX11
- * architecture.
- * @tparam CompilerTarget Current compiler target
- */
-// TODO: c++20 template <amdgcn_target CompilerTarget>
-// TODO: c++20 requires
 template <typename CompilerTarget>
 // clang-format off
-//               | A B C DataTypes             | MNK + WaveSize    |AParams  |BPar |CPar |
+//                |A B C DataTypes              |MNK           |
 struct amdgcn_mma<pk_int4_t, pk_int4_t, int32_t, 16u, 16u, 16u, CompilerTarget, MmaOpFamily::DENSE, enable_if_target_family_gfx11_t<CompilerTarget>>
+//                                                             |WS  |AParams |BPar |CPar |
 : amdgcn_mma_base<pk_int4_t, pk_int4_t, int32_t, 16u, 16u, 16u, 32u, 16, 1, 2, 1, 2, 8, 8, WmmaOp, MmaOpFamily::DENSE>
 // clang-format on
 {
@@ -153,5 +142,7 @@ struct amdgcn_mma<pk_int4_t, pk_int4_t, int32_t, 16u, 16u, 16u, CompilerTarget, 
                                                            P::clamp)};
     }
 };
+
+/** @} */ // dense_wmma_gfx11
 
 } // namespace ck_tile::core::arch::mma
